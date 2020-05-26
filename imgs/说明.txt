@@ -1,0 +1,7 @@
+【ESP8266串口wifi模块 NodeMCU Lua V3物联网开发板 CH340 arduino】http://m.tb.cn/h.3cf7ZNZ 点击链接，再选择浏览器咑閞；或復·制这段描述�TTnv0AGcPpG�后到淘寳
+
+
+
+
+刷写成功后管理wifi名称是:TPYBoard v202
+密码是tpyboard
