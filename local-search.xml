@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  
+  
+  
+  <entry>
+    <title>tiny模式如何写</title>
+    <link href="/2020/05/25/tiny%E6%A8%A1%E5%BC%8F%E5%A6%82%E4%BD%95%E5%86%99/"/>
+    <url>/2020/05/25/tiny%E6%A8%A1%E5%BC%8F%E5%A6%82%E4%BD%95%E5%86%99/</url>
+    
+    <content type="html"><![CDATA[<p>一般情况下，tiny的模式模板如下</p><p>全局配置：</p><pre><code class="hljs ini"><span class="hljs-attr">uid</span>=<span class="hljs-number">3004</span><span class="hljs-comment">;（应用放行，不管）</span><span class="hljs-attr">listen_port</span>=<span class="hljs-number">65080</span><span class="hljs-comment">;（监听端口，不改）</span><span class="hljs-attr">woker_proc</span>=<span class="hljs-number">0</span><span class="hljs-comment">;（后台进程数，不改）</span><span class="hljs-attr">daemon</span>=<span class="hljs-literal">on</span><span class="hljs-comment">;（这个就不用知道太多了，拿模板就行）</span><span class="hljs-attr">mode</span>=wap<span class="hljs-comment">;（联网方式，很多模式是wap，参考免流常用接入点）</span></code></pre><p>http模块：</p><pre><code class="hljs ini"><span class="hljs-attr">http_others</span>=<span class="hljs-literal">on</span>或者<span class="hljs-literal">off</span><span class="hljs-comment">;（建议不写这一行）</span><span class="hljs-attr">http_ip</span>=<span class="hljs-number">10.0</span>.<span class="hljs-number">0.200</span><span class="hljs-comment">;或者10.0.0.172;（不管）</span><span class="hljs-attr">http_port</span>=<span class="hljs-number">80</span><span class="hljs-comment">;（端口别改）</span><span class="hljs-attr">http_del</span>=<span class="hljs-string">"X-Online-Host,Host"</span><span class="hljs-comment">;（一般情况，不改）</span><span class="hljs-attr">http_first</span>=<span class="hljs-string">""</span><span class="hljs-comment">;（这里很关键[阴险][阴险]）</span></code></pre><p>https模块：</p><pre><code class="hljs ini"><span class="hljs-attr">https_connect</span>=<span class="hljs-literal">on</span>或者<span class="hljs-literal">off</span><span class="hljs-comment">;（常用on）</span><span class="hljs-attr">https_ip</span>=<span class="hljs-number">10.0</span>.<span class="hljs-number">0.200</span><span class="hljs-comment">;或者10.0.0.172（不管）</span><span class="hljs-attr">https_port</span>=<span class="hljs-number">80</span><span class="hljs-comment">;（端口别改）</span><span class="hljs-attr">https_del</span>=<span class="hljs-string">"Host,X-Online-Host"</span>（一般情况，不改）<span class="hljs-attr">https_first</span>=<span class="hljs-string">""</span><span class="hljs-comment">;（同理，这里很关键）</span></code></pre><p>dns解析：</p><pre><code class="hljs routeros"><span class="hljs-attribute">dns_tcp</span>=http;<span class="hljs-attribute">dns_listen_port</span>=65053;<span class="hljs-attribute">dns_url</span>=<span class="hljs-string">"119.29.29.29"</span>;（dns解析这一块基本可以不管，url可以稍微改改）</code></pre><h4 id="免流是什么意思"><a href="#免流是什么意思" class="headerlink" title="免流是什么意思"></a>免流是什么意思</h4><p>​    我们用手机卡正常上网主要有两个验证系统，联网系统和计费系统，而免流要做的就是通过联网验证的基础上骗过计费系统，具体来讲就是让联网系统走正常host，让计费系统走我们的伪装host。</p><h5 id="部分语法"><a href="#部分语法" class="headerlink" title="部分语法"></a>部分语法</h5><p>​        联网系统中\r表示回车（就是换行），\n表示结尾，一般写完一部分host我们会写\r\n，也就是结尾的意思。[H]也就是[host]表示saqimg.qq.com俗称真实域名，也就是我们联网的的那个host，\t表示制表符，一般用作干扰。在计费系统中，\r表示空格，\n和\r\n表示结尾，\t同为干扰字符，有没有发现\r在联网和计费系统的含义不一样，这个很重要[滑稽][滑稽]</p><h5 id="联网host类型"><a href="#联网host类型" class="headerlink" title="联网host类型"></a>联网host类型</h5><p>​        一个正常的请求里面，联网走host有三种类型:首头host(后面简称首)，网络协议后的Host(后面简称H)，X-Online-Host(后面简称X)，而这三个联网host有一定的检测顺序。（有人说还要分X,H,首,x,h）</p><h5 id="联网首行讲解"><a href="#联网首行讲解" class="headerlink" title="联网首行讲解"></a>联网首行讲解</h5><p>​        就是http_first和https_first，其中http_first的一般格式:[M] (此处可插首头host) [U] [V]\r\n（后面可有H或者X）我们要做到联网的同时不计费，就要学会欺骗计费系统。很多地区的联网机制是X&gt;首&gt;H，我们看个例子来骗过计费系统：（记住是在del删除了首行X和H的基础上）<br>[M] [U] [V]\r\n\rHost:[host]\r\nHost:migumovie.lovev.cn\r\n<br>这里我们看到没有首头H，那就不管，联网系统读到的信息是这样:<br>MUV<br>Host:[host]<br>Host:migumovie.lovev.cn<br>联网系统读到Host:[host]，通过，可以联网<br>计费系统读到这样的信息：<br>MUV<br>\rHost:[host]<br>Host:migumovie.lovev.cn<br>读到\rHost:[host]，（卧槽\r这是个什么玩意）计费系统认为*Host:[host]，这堆玩意他不懂，直接跳过，然后就读到了我们的咪咕视频伪装，所以将流量损耗记作了咪咕视频内所耗的流量，不扣套餐费。<br>而我们所需要的联网机制就是X，首，H的优先级，测试方法可用首伪法做示范：<br>[M] 伪装host[U] [V]\r\nHost:[host]\r\n<br>如果正常联网说明H&gt;首，反之首&gt;H。也可以来测试首头和X的检测顺序。<br>当然也可以不要首头host在协议后面写X和H来检测：<br>[M] [U] [V]\r\nX-Online-Host:伪装host\r\nHost:[host]\r\n<br>如果不联网，说明X&gt;H，反之H&gt;X。<br>我们可以利用联网优先级来写模式，具体自己脑补，可以多看看别人写的模式。<br>关于圣子模式，就是抓包抓到的圣子IP然后更改ip和port（上面一般是10.0.0.200:80）它的作用就是强行让我们的模块联网，具体的话，一般用不上圣子模式。</p>]]></content>
+    
+    
+    
+    <tags>
+      
+      <tag>♥宅♥</tag>
+      
+      <tag>免流</tag>
+      
+      <tag>tiny</tag>
+      
+      <tag>♥白嫖♥</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>联通歪卡免流</title>
+    <link href="/2020/05/25/%E8%81%94%E9%80%9A%E6%AD%AA%E5%8D%A1%E5%85%8D%E6%B5%81/"/>
+    <url>/2020/05/25/%E8%81%94%E9%80%9A%E6%AD%AA%E5%8D%A1%E5%85%8D%E6%B5%81/</url>
+    
+    <content type="html"><![CDATA[<h4 id="免流"><a href="#免流" class="headerlink" title="免流"></a>免流</h4><p>​    我们用手机卡正常上网主要有两个验证系统，联网系统和计费系统，而免流要做的就是通过联网验证的基础上骗过计费系统，具体来讲就是让联网系统走正常host，让计费系统走我们的伪装host。</p><h4 id="脚本好处"><a href="#脚本好处" class="headerlink" title="脚本好处"></a>脚本好处</h4><p>​    零跳点、可开热点给其他设备使用、可打游戏、无限量，无限速。</p><p>不废话了，先来看看效果。</p><img src="F:\blog\themes\fluid\source\imgs\歪卡示例.jpg" srcset="/img/loading.gif" style="zoom:80%;" /><p>已经使用了220+GB流量，网速还可以达到21.1MB/s。</p><p><img src="F:%5Cblog%5Cthemes%5Cfluid%5Csource%5Cimgs%5C%E6%B5%8B%E9%80%9F.jpg" srcset="/img/loading.gif" alt=""></p><h5 id="必要要求："><a href="#必要要求：" class="headerlink" title="必要要求："></a>必要要求：</h5><p>​    1、安卓手机已经获取<strong>root权限</strong>。（没有root权限的，可以使用）</p><p>​    2、联通小歪卡。（可以去微信公众号“<strong>中国联通微厅</strong>”，找在线客服更改套餐。次月生效。）</p><p>​    3、一个脑子。（这点很重要）</p><h5 id="奔放步骤："><a href="#奔放步骤：" class="headerlink" title="奔放步骤："></a>奔放步骤：</h5><p>​    1、下载MT管理器，root一定要给权限。</p><p>​    2、<a href="https://monkeyteens.lanzous.com/iczv2yj" target="_blank" rel="noopener">免流脚本</a>下载</p><p>​    3、将脚本解压到：<strong>根目录/system/bin</strong>下</p><p>​    4、给解压好的文件夹<strong>777权限</strong></p><p>​    5、将下面代码粘贴到脚本文件夹下<strong>模式.conf</strong>内</p><p>​    6、以上步骤完成就可以了，点击<strong>开始.sh</strong>即可</p><pre><code class="hljs ini"><span class="hljs-attr">listen_port</span>=<span class="hljs-number">65080</span><span class="hljs-comment">;</span><span class="hljs-attr">worker_proc</span>=<span class="hljs-number">0</span><span class="hljs-comment">;</span><span class="hljs-attr">daemon</span>=<span class="hljs-literal">on</span><span class="hljs-comment">;</span><span class="hljs-attr">uid</span>=<span class="hljs-number">3004</span><span class="hljs-comment">;</span><span class="hljs-attr">http_others</span>=<span class="hljs-literal">on</span><span class="hljs-comment">;</span><span class="hljs-attr">http_ip</span>=<span class="hljs-number">112.80</span>.<span class="hljs-number">255.21</span><span class="hljs-comment">;</span><span class="hljs-attr">http_port</span>=<span class="hljs-number">443</span><span class="hljs-comment">;</span><span class="hljs-attr">http_del</span>=<span class="hljs-string">"X-Online-Host,Host"</span><span class="hljs-comment">;</span><span class="hljs-attr">http_first</span>=<span class="hljs-string">"[M] http://[H][U] [V]\r\nHost: [H]\r\nX-T5-Auth: ZjQxNDIh\r\n"</span><span class="hljs-comment">;</span><span class="hljs-attr">https_connect</span>=<span class="hljs-literal">on</span><span class="hljs-comment">;</span><span class="hljs-attr">https_ip</span>=<span class="hljs-number">112.80</span>.<span class="hljs-number">255.21</span><span class="hljs-comment">;</span><span class="hljs-attr">https_port</span>=<span class="hljs-number">443</span><span class="hljs-comment">;</span><span class="hljs-attr">https_del</span>=<span class="hljs-string">"X-Online-Host,Host"</span><span class="hljs-comment">;</span><span class="hljs-attr">https_first</span>=<span class="hljs-string">" [M] [H] [V]\r\nHost: [H]\r\nX-T5-Auth: ZjQxNDIh\r\n"</span><span class="hljs-comment">;</span><span class="hljs-attr">dns_tcp</span>=http<span class="hljs-comment">;</span><span class="hljs-attr">dns_listen_port</span>=<span class="hljs-number">65053</span><span class="hljs-comment">;</span><span class="hljs-attr">dns_url</span>=<span class="hljs-string">"119.29.29.29"</span><span class="hljs-comment">;</span></code></pre><p>注意：</p><p>运行完脚本，看显示信息，需要http、https后边都有√才行，有一个不对就退出多运行几遍，直至后边都是√。</p><p><img src="F:%5Cblog%5Cthemes%5Cfluid%5Csource%5Cimgs%5C%E8%84%9A%E6%9C%AC.jpg" srcset="/img/loading.gif" alt=""></p>]]></content>
+    
+    
+    
+    <tags>
+      
+      <tag>免流</tag>
+      
+      <tag>♥白嫖♥，♥宅♥</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>显示器故障检修</title>
+    <link href="/2020/05/25/%E6%98%BE%E7%A4%BA%E5%99%A8%E6%95%85%E9%9A%9C%E6%A3%80%E4%BF%AE/"/>
+    <url>/2020/05/25/%E6%98%BE%E7%A4%BA%E5%99%A8%E6%95%85%E9%9A%9C%E6%A3%80%E4%BF%AE/</url>
+    
+    <content type="html"><![CDATA[<h4 id="显示器故障检修"><a href="#显示器故障检修" class="headerlink" title="显示器故障检修"></a>显示器故障检修</h4><h3 id="黑屏"><a href="#黑屏" class="headerlink" title="黑屏"></a>黑屏</h3><h4 id="一、按开机键无反应，指示灯不亮"><a href="#一、按开机键无反应，指示灯不亮" class="headerlink" title="一、按开机键无反应，指示灯不亮"></a>一、按开机键无反应，指示灯不亮</h4><h5 id="故障部件"><a href="#故障部件" class="headerlink" title="故障部件"></a>故障部件</h5><ol><li>电源板部分</li><li>驱动板部分</li></ol><h5 id="检修"><a href="#检修" class="headerlink" title="检修"></a>检修</h5><h6 id="第一步：接入220V，测电源输出-12V，-5V。若无电压，则"><a href="#第一步：接入220V，测电源输出-12V，-5V。若无电压，则" class="headerlink" title="第一步：接入220V，测电源输出+12V，+5V。若无电压，则"></a>第一步：接入220V，测电源输出+12V，+5V。若无电压，则</h6><p>​        ①：目测</p><p>​        ②：电源板输出接口+12V，+5V对地打值，若为0则短路，一般为二极管，有级电容击穿引起。</p><p>​        ③：易坏原件测量：保险、桥堆、开关管、取样电阻、二极管</p><p>​        ④：接入220V,在450V大电容测300V</p><p>​        ⑤：控制芯片端问题。百度查询芯片型号，找出供电。查启动电阻阻值大小，查持续供电、二极管、电阻。</p><p>​        ⑥：最后更换芯片或电源模块代换</p><h6 id="第二步：驱动问题"><a href="#第二步：驱动问题" class="headerlink" title="第二步：驱动问题"></a>第二步：驱动问题</h6><p>​        ①：查12V转5V（易坏）、5V转3.3V、3.3V转1.2V</p><p>​        ②：刷程序</p><p>​        ③：MCU坏</p><h4 id="二、指示灯亮，按开机键反应正常，黑屏"><a href="#二、指示灯亮，按开机键反应正常，黑屏" class="headerlink" title="二、指示灯亮，按开机键反应正常，黑屏"></a>二、指示灯亮，按开机键反应正常，黑屏</h4><h5 id="检修-1"><a href="#检修-1" class="headerlink" title="检修"></a>检修</h5><p>​    指示灯开机反应正常，说明MCU已正常工作，黑屏是由于背光未亮引起</p><h6 id="第一步：测灯管或灯条好坏。用点灯王测试。"><a href="#第一步：测灯管或灯条好坏。用点灯王测试。" class="headerlink" title="第一步：测灯管或灯条好坏。用点灯王测试。"></a>第一步：测灯管或灯条好坏。用点灯王测试。</h6><h6 id="第二步：测背光-12V、BLON、ADJ。"><a href="#第二步：测背光-12V、BLON、ADJ。" class="headerlink" title="第二步：测背光+12V、BLON、ADJ。"></a>第二步：测背光+12V、BLON、ADJ。</h6><h6 id="第三步：背光电路问题更换高压板或恒流板。"><a href="#第三步：背光电路问题更换高压板或恒流板。" class="headerlink" title="第三步：背光电路问题更换高压板或恒流板。"></a>第三步：背光电路问题更换高压板或恒流板。</h6><h3 id="花屏"><a href="#花屏" class="headerlink" title="花屏"></a>花屏</h3><p><strong>现象</strong>：多个彩条，图像行场异常，多个变化的亮线、亮带，图像反白，图像闪烁。</p><h5 id="检修-2"><a href="#检修-2" class="headerlink" title="检修"></a>检修</h5><p>​    ①：驱动板MCU或程序坏引起，替换法判断。</p><p>​    ②：屏线接口接触问题。</p><p>​    ③：电源板功率不足。</p><p>​    ④：液晶屏逻辑板坏或Cof坏。</p><h3 id="白屏"><a href="#白屏" class="headerlink" title="白屏"></a>白屏</h3><h5 id="检修-3"><a href="#检修-3" class="headerlink" title="检修"></a>检修</h5><h6 id="1、驱动板故障引起"><a href="#1、驱动板故障引起" class="headerlink" title="1、驱动板故障引起"></a>1、驱动板故障引起</h6><p>​        ①：测上屏供电5V。开关管或屏线1、2脚测量。</p><p>​        ②：测LVDS信号1.0V~1.5V。</p><h6 id="2、屏线问题。"><a href="#2、屏线问题。" class="headerlink" title="2、屏线问题。"></a>2、屏线问题。</h6><p>​        重新插拔屏线。</p><h6 id="3、液晶屏逻辑板坏或Cof坏。"><a href="#3、液晶屏逻辑板坏或Cof坏。" class="headerlink" title="3、液晶屏逻辑板坏或Cof坏。"></a>3、液晶屏逻辑板坏或Cof坏。</h6><h3 id="缺色"><a href="#缺色" class="headerlink" title="缺色"></a>缺色</h3><h5 id="检修-4"><a href="#检修-4" class="headerlink" title="检修"></a>检修</h5><p>​    ①：输入接口故障。</p><p>​    ②：背光引起。</p>]]></content>
+    
+    
+    
+    <tags>
+      
+      <tag>维修</tag>
+      
+      <tag>♥宅♥</tag>
+      
+      <tag>显示器</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>笔记本开机触发过程</title>
+    <link href="/2020/05/25/%E7%AC%94%E8%AE%B0%E6%9C%AC%E5%BC%80%E6%9C%BA%E8%A7%A6%E5%8F%91%E8%BF%87%E7%A8%8B/"/>
+    <url>/2020/05/25/%E7%AC%94%E8%AE%B0%E6%9C%AC%E5%BC%80%E6%9C%BA%E8%A7%A6%E5%8F%91%E8%BF%87%E7%A8%8B/</url>
+    
+    <content type="html"><![CDATA[<h4 id="1、开机触发方式"><a href="#1、开机触发方式" class="headerlink" title="1、开机触发方式"></a>1、开机触发方式</h4><ol><li>​    由EC芯片和南桥芯片组成</li><li>​    由南桥芯片独立完成</li></ol><h5 id="开机触发："><a href="#开机触发：" class="headerlink" title="开机触发："></a>开机触发：</h5><p>​    以<strong>MEC1300</strong>芯片为例：</p><table><thead><tr><th>脚位</th><th>名称</th><th>过程</th><th>电压变化</th></tr></thead><tbody><tr><td>116</td><td>KBC3_PWRSW#</td><td>EC芯片触发工作脚</td><td>3.3V ~ 0V</td></tr><tr><td>4</td><td>KBC3_SUSOWR</td><td>开启南桥待机供电输出恒定电压</td><td>3.3V</td></tr><tr><td>65</td><td>KBC3_RSMRST#</td><td>当KBC3_SUSPWR输出后，延迟几毫秒后输出KBC3_RSMRST#</td><td>3.3V(南桥复位)</td></tr><tr><td>64</td><td>KBC3_PWRBTN#</td><td>当南桥供电、时钟、复位正常后，在KBC3_PWRBTN#脚输出3.3V<br />当按下开机键，EC芯片拉低3.3V为0V<br />松开开机键，恢复3.3V</td><td>3.3V<del>0V</del>3.3V(南桥开始工作)</td></tr><tr><td>43<br />90</td><td>SLP_S4#<br />SLP_S3#</td><td>休眠控制<br />南桥工作后，输出恒定3.3V</td><td>3.3V(恒定)</td></tr><tr><td>101</td><td>KBC3_VRON</td><td>CPU供电开启控制</td><td>3.3V(恒定)</td></tr></tbody></table>]]></content>
+    
+    
+    
+    <tags>
+      
+      <tag>笔记本维修</tag>
+      
+      <tag>维修</tag>
+      
+      <tag>♥宅♥</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
+    <title>Hello World</title>
+    <link href="/2020/05/25/hello-world/"/>
+    <url>/2020/05/25/hello-world/</url>
+    
+    <content type="html"><![CDATA[<p>Welcome to <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/" target="_blank" rel="noopener">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html" target="_blank" rel="noopener">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues" target="_blank" rel="noopener">GitHub</a>.</p><h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><pre><code class="hljs bash">$ hexo new <span class="hljs-string">"My New Post"</span></code></pre><p>More info: <a href="https://hexo.io/docs/writing.html" target="_blank" rel="noopener">Writing</a></p><h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><pre><code class="hljs bash">$ hexo server</code></pre><p>More info: <a href="https://hexo.io/docs/server.html" target="_blank" rel="noopener">Server</a></p><h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><pre><code class="hljs bash">$ hexo generate</code></pre><p>More info: <a href="https://hexo.io/docs/generating.html" target="_blank" rel="noopener">Generating</a></p><h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><pre><code class="hljs bash">$ hexo deploy</code></pre><p>More info: <a href="https://hexo.io/docs/one-command-deployment.html" target="_blank" rel="noopener">Deployment</a></p>]]></content>
+    
+    
+    
+  </entry>
+  
+  
+  
+  
+</search>
